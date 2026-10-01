@@ -1,101 +1,917 @@
-# Web-Based Face Recognition Pipeline
+const STATE = {
+  currentProbe: null,
+  gallery: [],
+  threshold: 0.6,
+  metric: 'cosine',
+  initialized: false,
+  stream: null,
+  selectedPanel: 'upload-panel',
+};
 
-Browser-compatible facial recognition application built with TensorFlow.js and face-api.js.
+const navButtons = document.querySelectorAll('.nav-btn');
+const panels = document.querySelectorAll('.panel');
+const imageInput = document.getElementById('imageInput');
+const galleryInput = document.getElementById('galleryInput');
+const dropZone = document.getElementById('dropZone');
+const galleryDropZone = document.getElementById('galleryDropZone');
+const thresholdSlider = document.getElementById('thresholdSlider');
+const metricSelect = document.getElementById('metricSelect');
+const matchSummary = document.getElementById('matchSummary');
+const matchResults = document.getElementById('matchResults');
 
-## Features
+navButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    navButtons.forEach(b => b.classList.toggle('active', b === btn));
+    const target = btn.dataset.panel;
+    STATE.selectedPanel = target;
+    panels.forEach(p => p.classList.toggle('active', p.id === target));
+  });
+});
 
-- Real-time face detection in the browser
-- Face embedding extraction using pre-trained models
-- Similarity matching with configurable thresholds
-- Drag-and-drop image upload
-- Support for both cosine similarity and Euclidean distance metrics
-- Responsive design for mobile and desktop
+thresholdSlider.addEventListener('input', (e) => {
+  STATE.threshold = Number(e.target.value);
+  runMatching();
+});
 
-## Quick Start
+metricSelect.addEventListener('change', (e) => {
+  STATE.metric = e.target.value;
+  runMatching();
+});
 
-### Option 1: Local Development
+setupDropZone(dropZone, imageInput, handleProbeFile);
+setupDropZone(galleryDropZone, galleryInput, handleGalleryFiles);
 
-1. Serve the files with a local HTTP server:
-   ```bash
-   cd web
-   python -m http.server 8000
-   ```
+document.getElementById('startCameraBtn').addEventListener('click', startCamera);
+document.getElementById('captureBtn').addEventListener('click', captureProbeFromCamera);
 
-2. Open your browser and navigate to:
-   ```
-   http://localhost:8000
-   ```
+async function init() {
+  await loadModels();
+  STATE.initialized = true;
+  console.log('Face API loaded');
+}
 
-### Option 2: Direct File Open
+async function loadModels() {
+  const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
+  await Promise.all([
+    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+  ]);
+}
 
-Simply open `index.html` directly in your browser (some features may be limited due to CORS restrictions).
+function setupDropZone(zone, input, fileHandler) {
+  zone.addEventListener('click', () => input.click());
+  zone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    zone.classList.add('dragover');
+  });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    const files = [...e.dataTransfer.files];
+    if (files.length) fileHandler(files);
+  });
+  input.addEventListener('change', (e) => {
+    if (e.target.files?.length) fileHandler([...e.target.files]);
+  });
+}
 
-## Usage
+async function handleProbeFile(files) {
+  const file = files[0];
+  if (!file) return;
+  const img = await loadImageFromFile(file);
+  const detected = await detectFacesInImage(img);
+  if (!detected.length) {
+    alert('No face detected. Please choose another image.');
+    return;
+  }
+  STATE.currentProbe = { fileName: file.name, image: img, descriptor: detected[0].descriptor };
+  renderProbePreview();
+  runMatching();
+}
 
-1. **Upload Probe Image**: Drag and drop or click to upload an image containing a face.
-2. **View Detection**: The app detects faces and displays the first face as the probe.
-3. **Upload Gallery**: Upload multiple images to match against the probe.
-4. **View Matches**: See similarity scores and identify matches.
-5. **Adjust Settings**: Change the similarity threshold and distance metric as needed.
+async function handleGalleryFiles(files) {
+  const processed = [];
+  for (const file of files) {
+    const img = await loadImageFromFile(file);
+    const detections = await detectFacesInImage(img);
+    if (!detections.length) continue;
+    processed.push({
+      fileName: file.name,
+      image: img,
+      descriptor: detections[0].descriptor,
+    });
+  }
+  STATE.gallery = processed;
+  renderGalleryPreview();
+  runMatching();
+}
 
-## Models Used
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
-- **Face Detection**: TensorFlow.js (face-api.js MTCNN)
-- **Face Landmarks**: Face-api.js landmark detection
-- **Face Embeddings**: Face-api.js face recognition net (based on ResNet)
+async function detectFacesInImage(img) {
+  return await faceapi
+    .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions())
+    .withFaceLandmarks()
+    .withFaceDescriptors();
+}
 
-## Browser Support
+function renderProbePreview() {
+  const preview = document.getElementById('probePreview');
+  if (!STATE.currentProbe) {
+    preview.innerHTML = '';
+    return;
+  }
+  preview.innerHTML = `
+    <div class="preview-box">
+      <img src="${STATE.currentProbe.image.src}" alt="Probe preview" />
+      <div class="preview-meta"><strong>${STATE.currentProbe.fileName}</strong></div>
+    </div>
+  `;
+}
 
-- Chrome 90+
-- Firefox 88+
-- Safari 14+
-- Edge 90+
+function renderGalleryPreview() {
+  const galleryPreview = document.getElementById('galleryPreview');
+  galleryPreview.innerHTML = '';
+  STATE.gallery.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'gallery-item';
+    card.innerHTML = `
+      <img src="${item.image.src}" alt="${item.fileName}" />
+      <div class="gallery-meta">
+        <strong>${item.fileName}</strong>
+      </div>
+    `;
+    galleryPreview.appendChild(card);
+  });
+}
 
-## Dependencies
+function runMatching() {
+  if (!STATE.currentProbe || !STATE.gallery.length) {
+    matchSummary.textContent = 'Upload a probe image and gallery images to begin matching.';
+    matchResults.innerHTML = '';
+    return;
+  }
 
-- TensorFlow.js 4.11.0
-- face-api.js 0.22.2
-- coco-ssd 2.2.3 (optional)
+  const matches = STATE.gallery.map(item => {
+    const score = computeSimilarity(STATE.currentProbe.descriptor, item.descriptor, STATE.metric);
+    return { ...item, score, matched: score >= STATE.threshold };
+  }).sort((a, b) => b.score - a.score);
 
-## Performance Notes
+  const topMatch = matches[0];
+  matchSummary.textContent = topMatch
+    ? `Best match: ${topMatch.fileName} at ${(topMatch.score * 100).toFixed(2)}% using ${STATE.metric}.`
+    : 'No matches available.';
 
-- First load takes ~2-3 seconds to load models
-- Face detection: ~200-500ms per image
-- Embedding extraction: included in detection
-- Similarity matching: <1ms
+  const cards = matches.map(item => `
+    <div class="match-result ${item.matched ? 'matched' : 'no-match'}">
+      <strong>${item.fileName}</strong>
+      <div class="score">${(item.score * 100).toFixed(2)}% similarity</div>
+      <div>${item.matched ? 'Match' : 'Not a match'} · Threshold ${STATE.threshold.toFixed(2)}</div>
+    </div>
+  `).join('');
 
-## Limitations
+  matchResults.innerHTML = cards;
 
-- Models run entirely in the browser (no server required)
-- Performance depends on device hardware
-- Best results with clear, frontal face images
-- Embedding model is smaller than production models (for performance)
+  const galleryItems = document.querySelectorAll('.gallery-item');
+  galleryItems.forEach((card, idx) => {
+    card.classList.toggle('matched', matches[idx]?.matched);
+  });
+}
 
-## Advanced Configuration
+function computeSimilarity(embeddingA, embeddingB, metric) {
+  const a = Array.from(embeddingA);
+  const b = Array.from(embeddingB);
 
-Edit `app.js` to modify:
+  if (metric === 'cosine') {
+    return cosineSimilarity(a, b);
+  }
 
-- `STATE.similarityThreshold`: Default similarity threshold (0.0-1.0)
-- `STATE.metric`: Default distance metric ('cosine' or 'euclidean')
-- Model URLs and options in `loadFaceDetector()`
+  return 1 / (1 + euclideanDistance(a, b));
+}
 
-## Troubleshooting
+function cosineSimilarity(a, b) {
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  const denom = Math.sqrt(normA) * Math.sqrt(normB);
+  return denom === 0 ? 0 : dot / denom;
+}
 
-### Models fail to load
-- Check internet connection (models are loaded from CDN)
-- Clear browser cache
-- Try a different browser
+function euclideanDistance(a, b) {
+  let sum = 0;
+  for (let i = 0; i < a.length; i++) {
+    const diff = a[i] - b[i];
+    sum += diff * diff;
+  }
+  return Math.sqrt(sum);
+}
 
-### No faces detected
-- Ensure image has a clear frontal face
-- Try with a different image
-- Check browser console for errors
+async function startCamera() {
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Camera API not supported in this browser.');
+    return;
+  }
 
-### Performance is slow
-- Close other browser tabs
-- Use a more powerful device or GPU-enabled browser
-- Reduce image resolution before upload
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    STATE.stream = stream;
+    video.srcObject = stream;
+    video.play();
+  } catch (error) {
+    alert('Camera access denied or unavailable.');
+    console.error(error);
+  }
+}
 
-## License
+async function captureProbeFromCamera() {
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
 
-MIT
+  if (!STATE.stream || video.readyState < 2) {
+    alert('Start the camera before capturing.');
+    return;
+  }
+
+  const ctx = canvas.getContext('2d');
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  const dataURL = canvas.toDataURL('image/png');
+  const img = new Image();
+  img.onload = async () => {
+    const detected = await detectFacesInImage(img);
+    if (!detected.length) {
+      alert('No face detected in the camera frame.');
+      return;
+    }
+    STATE.currentProbe = {
+      fileName: 'camera_capture.png',
+      image: img,
+      descriptor: detected[0].descriptor,
+    };
+    renderProbePreview();
+    runMatching();
+  };
+  img.src = dataURL;
+}
+
+init();
+
+window.addEventListener('beforeunload', () => {
+  if (STATE.stream) {
+    STATE.stream.getTracks().forEach(track => track.stop());
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+$n
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

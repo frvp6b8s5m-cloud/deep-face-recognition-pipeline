@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advanced Face Recognition</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <h1>Face Recognition</h1>
+      <nav>
+        <button class="nav-btn active" data-panel="upload-panel">Upload</button>
+        <button class="nav-btn" data-panel="camera-panel">Camera</button>
+        <button class="nav-btn" data-panel="gallery-panel">Gallery</button>
+        <button class="nav-btn" data-panel="results-panel">Results</button>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <section id="upload-panel" class="panel active">
+        <h2>Upload Probe Image</h2>
+        <div id="dropZone" class="drop-zone">
+          <input id="imageInput" type="file" accept="image/*" hidden />
+          <p>Drop image here or <strong>click to upload</strong></p>
+        </div>
+        <div id="probePreview" class="preview-container"></div>
+      </section>
+
+      <section id="camera-panel" class="panel">
+        <h2>Live Camera Recognition</h2>
+        <div class="camera-toolbar">
+          <button id="startCameraBtn">Start Camera</button>
+          <button id="captureBtn" class="secondary">Capture Probe</button>
+        </div>
+        <video id="cameraVideo" autoplay playsinline muted></video>
+        <canvas id="cameraCanvas" width="640" height="480"></canvas>
+      </section>
+
+      <section id="gallery-panel" class="panel">
+        <h2>Gallery Matching</h2>
+        <div id="galleryDropZone" class="drop-zone small">
+          <input id="galleryInput" type="file" accept="image/*" multiple hidden />
+          <p>Upload multiple gallery faces</p>
+        </div>
+        <div id="galleryPreview" class="gallery-grid"></div>
+      </section>
+
+      <section id="results-panel" class="panel">
+        <h2>Matching Results</h2>
+        <div class="settings-row">
+          <label>
+            Threshold
+            <input id="thresholdSlider" type="range" min="0" max="1" step="0.01" value="0.6" />
+          </label>
+          <label>
+            Metric
+            <select id="metricSelect">
+              <option value="cosine">Cosine</option>
+              <option value="euclidean">Euclidean</option>
+            </select>
+          </label>
+        </div>
+        <div id="matchSummary" class="match-summary"></div>
+        <div id="matchResults" class="match-results"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
