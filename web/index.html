@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition Pipeline</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎭 Deep Face Recognition Pipeline</h1>
+            <p>Real-time facial recognition in your browser</p>
+        </header>
+
+        <main>
+            <section class="section">
+                <h2>Upload & Detect Faces</h2>
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" id="imageInput" accept="image/*" hidden>
+                    <div class="upload-prompt">
+                        <p>📷 Click to upload or drag & drop an image</p>
+                        <small>Supported: JPG, PNG, BMP</small>
+                    </div>
+                </div>
+                <div id="imagePreview" class="image-preview"></div>
+            </section>
+
+            <section class="section">
+                <h2>Detection Results</h2>
+                <div id="results" class="results-container"></div>
+            </section>
+
+            <section class="section">
+                <h2>Face Matching</h2>
+                <div class="matching-section">
+                    <div class="probe-section">
+                        <h3>Probe Image</h3>
+                        <canvas id="probeCanvas" width="160" height="160"></canvas>
+                        <p id="probeEmbedding" class="embedding-info"></p>
+                    </div>
+                    <div class="gallery-section">
+                        <h3>Gallery Upload</h3>
+                        <div class="upload-area" id="galleryUploadArea">
+                            <input type="file" id="galleryInput" accept="image/*" hidden multiple>
+                            <div class="upload-prompt">
+                                <p>📂 Upload gallery images</p>
+                            </div>
+                        </div>
+                        <div id="galleryResults" class="gallery-results"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Settings</h2>
+                <div class="settings-grid">
+                    <div class="setting">
+                        <label for="similarityThreshold">Similarity Threshold:</label>
+                        <input type="range" id="similarityThreshold" min="0" max="1" step="0.05" value="0.6">
+                        <span id="thresholdValue">0.60</span>
+                    </div>
+                    <div class="setting">
+                        <label for="metric">Distance Metric:</label>
+                        <select id="metric">
+                            <option value="cosine">Cosine Similarity</option>
+                            <option value="euclidean">Euclidean Distance</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Built with TensorFlow.js · Face Detection powered by face-api.js</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
