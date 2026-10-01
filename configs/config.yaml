@@ -1,33 +1,13 @@
-# Python cache
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-
-# Virtual environments
-.venv/
-venv/
-env/
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Data
-/data/
-*.csv
-*.json
-*.h5
-*.pkl
-
-# Model checkpoints
-checkpoints/
-*.pth
-*.pt
-
-# IDE
-.vscode/
-.idea/
-
-# OS files
-.DS_Store
-Thumbs.db
+data_dir: "data/processed"
+raw_data_dir: "data/raw"
+checkpoint_dir: "checkpoints"
+model_name: "face_embedder_resnet"
+img_size: 160
+embedding_dim: 512
+batch_size: 32
+epochs: 50
+learning_rate: 0.0001
+threshold: 0.6
+metric: "cosine"
+face_detector: "opencv"
+seed: 42

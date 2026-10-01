@@ -1,18 +1,18 @@
 # Deep Face Recognition Pipeline
 
-A deep learning-based facial recognition system designed for face detection, embedding extraction, similarity matching, and evaluation.
+A complete starter-to-production Python project for a deep learning facial recognition pipeline. This repository includes face detection, embedding extraction, similarity matching, dataset preparation, evaluation, and training/inference workflows.
 
-## Overview
+## Features
 
-This project provides a starter pipeline for building a facial recognition system with:
+- Face detection and bounding box extraction
+- Face cropping and basic alignment
+- CNN-based embedding extractor
+- Similarity matching using cosine and Euclidean metrics
+- Dataset preparation from folder structure
+- Training loop and evaluation pipeline
+- Command-line scripts for dataset prep, training, inference, and evaluation
 
-- face detection using MTCNN or Haar cascade
-- face alignment and preprocessing
-- embedding extraction using a CNN backbone
-- similarity matching with cosine or Euclidean distance
-- dataset utilities and evaluation scripts
-
-## Repository Structure
+## Repository structure
 
 ```text
 .
@@ -24,10 +24,10 @@ This project provides a starter pipeline for building a facial recognition syste
 │   ├── config.yaml
 │   └── model_config.yaml
 ├── scripts/
+│   ├── prepare_dataset.py
 │   ├── train.py
 │   ├── inference.py
-│   ├── evaluate.py
-│   └── prepare_dataset.py
+│   └── evaluate.py
 ├── src/
 │   └── facial_recognition/
 │       ├── __init__.py
@@ -42,7 +42,8 @@ This project provides a starter pipeline for building a facial recognition syste
 │       │   └── embedding_model.py
 │       ├── matching/
 │       │   ├── __init__.py
-│       │   └── similarity.py
+│       │   ├── similarity.py
+│       │   └── matcher.py
 │       ├── dataset/
 │       │   ├── __init__.py
 │       │   ├── loader.py
@@ -50,8 +51,15 @@ This project provides a starter pipeline for building a facial recognition syste
 │       └── evaluation/
 │           ├── __init__.py
 │           └── metrics.py
-└── tests/
-    └── __init__.py
+├── data/
+│   ├── raw/
+│   ├── processed/
+│   └── models/
+├── checkpoints/
+├── logs/
+├── tests/
+│   └── __init__.py
+└── .github/
 ```
 
 ## Installation
@@ -65,52 +73,53 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-## Configuration
+## Dataset layout
 
-Edit the files in `configs/` to adjust:
+This project expects a folder-based dataset with one directory per identity:
 
-- dataset paths
-- model path
-- detection threshold
-- training hyperparameters
-- similarity cutoff
+```text
+data/raw/
+├── person_001/
+│   ├── img_001.jpg
+│   ├── img_002.jpg
+│   └── ...
+├── person_002/
+│   ├── img_001.jpg
+│   └── ...
+└── ...
+```
 
-## Usage
-
-### Prepare dataset
+Run dataset preparation:
 
 ```bash
 python scripts/prepare_dataset.py --input_dir data/raw --output_dir data/processed --split 0.2
 ```
 
-### Train model
+This creates a manifest and train/test partitions.
+
+## Training
 
 ```bash
-python scripts/train.py --config configs/config.yaml
+python scripts/train.py --data_dir data/processed --epochs 25 --batch_size 32
 ```
 
-### Run inference
+## Inference and recognition
 
 ```bash
-python scripts/inference.py --image_path path/to/image.jpg --model_path checkpoints/best_model.pth --config configs/config.yaml
+python scripts/inference.py --probe_path path/to/probe.jpg --gallery_dir data/processed/train --model_path checkpoints/best_model.pth
 ```
 
-### Evaluate model
+## Evaluation
 
 ```bash
-python scripts/evaluate.py --model_path checkpoints/best_model.pth --data_dir data/processed/test --config configs/config.yaml
+python scripts/evaluate.py --model_path checkpoints/best_model.pth --data_dir data/processed/test
 ```
 
 ## Notes
 
-This is a production-style starter project scaffold. You can swap in different backbones such as:
-
-- Facenet
-- ArcFace
-- ResNet-based face embeddings
-- MobileFaceNet
-
-The code is structured to allow extension for real-world training and deployment.
+- The system is implemented as a solid starter pipeline and can be upgraded to stronger architectures such as FaceNet, ArcFace, or ResNet-based embeddings.
+- The default detector uses an OpenCV Haar cascade as a robust fallback for local development.
+- For production-quality deployment, replace the lightweight CNN backbone with a pretrained face recognition model and larger dataset pipeline.
 
 ## License
 

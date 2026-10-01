@@ -1,13 +1,21 @@
-data_dir: "data/processed"
-raw_data_dir: "data/raw"
-checkpoint_dir: "checkpoints"
-model_name: "resnet_face_embedder"
-img_size: 160
-embedding_dim: 512
-batch_size: 32
-epochs: 50
-learning_rate: 0.0001
-threshold: 0.6
-metric: "cosine"
-face_detector: "mtcnn"
-seed: 42
+train:
+  batch_size: 32
+  epochs: 50
+  learning_rate: 0.0001
+  weight_decay: 0.00001
+  save_dir: "checkpoints"
+  device: "cpu"
+
+detection:
+  backend: "opencv"
+  min_neighbors: 5
+  scale_factor: 1.1
+  target_size: 160
+
+matching:
+  metric: "cosine"
+  threshold: 0.6
+
+model:
+  embedding_dim: 512
+  backbone: "cnn"
