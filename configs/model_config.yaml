@@ -1,0 +1,13 @@
+data_dir: "data/processed"
+raw_data_dir: "data/raw"
+checkpoint_dir: "checkpoints"
+model_name: "resnet_face_embedder"
+img_size: 160
+embedding_dim: 512
+batch_size: 32
+epochs: 50
+learning_rate: 0.0001
+threshold: 0.6
+metric: "cosine"
+face_detector: "mtcnn"
+seed: 42

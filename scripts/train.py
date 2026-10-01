@@ -1,0 +1,21 @@
+train:
+  batch_size: 32
+  epochs: 50
+  learning_rate: 0.0001
+  weight_decay: 0.00001
+  save_dir: "checkpoints"
+  device: "cpu"
+
+detection:
+  backend: "opencv"
+  min_neighbors: 5
+  scale_factor: 1.1
+  target_size: 160
+
+matching:
+  metric: "cosine"
+  threshold: 0.6
+
+model:
+  embedding_dim: 512
+  backbone: "resnet"
